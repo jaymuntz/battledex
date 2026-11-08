@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Battleground</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Battleground</h1>
+    <p class="tagline">Two fighters enter. One verdict leaves.</p>
+  </header>
+
+  <main>
+    <!-- View 1: input form (only view visible on load) -->
+    <section id="view-form" class="view">
+      <form id="fight-form" novalidate>
+        <div class="field">
+          <label for="fighter-a">Fighter A</label>
+          <input id="fighter-a" name="fighterA" type="text" maxlength="60"
+                 placeholder="e.g. a grizzly bear" autocomplete="off">
+        </div>
+
+        <div class="vs" aria-hidden="true">VS</div>
+
+        <div class="field">
+          <label for="fighter-b">Fighter B</label>
+          <input id="fighter-b" name="fighterB" type="text" maxlength="60"
+                 placeholder="e.g. 10 angry geese" autocomplete="off">
+        </div>
+
+        <p id="form-message" class="form-message" role="alert"></p>
+
+        <button type="submit" class="btn btn-primary">Fight!</button>
+      </form>
+    </section>
+
+    <!-- View 2: loading -->
+    <section id="view-loading" class="view" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-text" aria-live="polite">Judging the fight…</p>
+    </section>
+
+    <!-- View 3: result -->
+    <section id="view-result" class="view" hidden>
+      <div class="matchup">
+        <figure class="fighter" id="fighter-card-a">
+          <img id="image-a" alt="">
+          <figcaption id="name-a"></figcaption>
+        </figure>
+        <div class="vs" aria-hidden="true">VS</div>
+        <figure class="fighter" id="fighter-card-b">
+          <img id="image-b" alt="">
+          <figcaption id="name-b"></figcaption>
+        </figure>
+      </div>
+
+      <div class="verdict">
+        <p class="verdict-label">Winner</p>
+        <h2 id="winner-name"></h2>
+        <p id="reasoning"></p>
+      </div>
+
+      <button type="button" class="btn btn-primary" data-action="new-fight">New fight</button>
+    </section>
+
+    <!-- View 4: error -->
+    <section id="view-error" class="view" hidden>
+      <h2>Something went wrong</h2>
+      <p id="error-message">The judges couldn't reach a verdict. Please try again.</p>
+      <button type="button" class="btn btn-primary" data-action="new-fight">Try again</button>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
