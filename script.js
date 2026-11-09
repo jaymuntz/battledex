@@ -1,8 +1,8 @@
-// Battleground — Stage 3: real verdict from /api/fight. Images are still
-// placeholders until image generation is added.
+// Battleground — Stage 3: real verdict and fighter art from /api/fight.
 
 const MAX_NAME_LENGTH = 60;
-const FIGHT_TIMEOUT_MS = 60_000;
+// Verdict plus two images can take a while; give it room before giving up.
+const FIGHT_TIMEOUT_MS = 120_000;
 
 const views = {
   form: document.getElementById("view-form"),
@@ -49,22 +49,13 @@ function validate(a, b) {
   return "";
 }
 
-// Simple SVG placeholder so the image slots have something to show.
-function placeholderImage(label, color) {
-  const text = label.slice(0, 18).replace(/[<>&"]/g, "");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
-    <rect width="100%" height="100%" fill="${color}"/>
-    <text x="50%" y="50%" fill="#fff" font-family="sans-serif" font-size="18"
-          text-anchor="middle" dominant-baseline="middle">${text}</text>
-  </svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
 // Messages for each error code the API returns, so each failure type reads
 // differently in the UI.
 const ERROR_MESSAGES = {
   rate_limited: "Whoa, slow down! You've hit the limit of 5 fights per minute.",
   verdict_failed: "The judges couldn't reach a verdict. Please try again.",
+  image_failed: "The fighters' portraits couldn't be painted. Please try again.",
+  moderation_blocked: "The art department refused to draw one of these fighters. Try different fighters.",
   invalid_input: "Enter a fighter on both sides.",
   timeout: "The judges took too long to decide. Please try again.",
   network: "Couldn't reach the arena. Check your connection and try again.",
@@ -106,13 +97,15 @@ async function fight(fighterA, fighterB) {
   if (!data || (data.winner !== "A" && data.winner !== "B") || typeof data.reasoning !== "string") {
     throw new FightError("verdict_failed");
   }
+  if (typeof data.imageA !== "string" || typeof data.imageB !== "string") {
+    throw new FightError("image_failed");
+  }
 
   return {
     winner: data.winner,
     reasoning: data.reasoning,
-    // Image generation comes later; fall back to placeholders until then.
-    imageA: data.imageA || placeholderImage(fighterA, "#3b6fd9"),
-    imageB: data.imageB || placeholderImage(fighterB, "#d93a2b"),
+    imageA: data.imageA,
+    imageB: data.imageB,
   };
 }
 

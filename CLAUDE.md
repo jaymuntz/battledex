@@ -19,13 +19,13 @@ API keys (Anthropic, OpenAI) go in `.env` (gitignored) and are only read inside 
 
 ## Architecture
 
-**Frontend (`index.html`, `script.js`, `style.css`).** One page with four `<section class="view">` elements: form, loading, result, error. `showView(name)` in `script.js` sets the `hidden` attribute so exactly one view is visible at a time, and new views (e.g. BattleDex) should follow the same pattern. Buttons are wired through delegated clicks on `data-action` attributes. `fight()` POSTs to `/api/fight` and maps the API's `error.code` (`rate_limited`, `verdict_failed`, `invalid_input`) plus client-side `timeout`/`network` to distinct messages via `ERROR_MESSAGES`. Its result shape `{ winner: "A"|"B", reasoning, imageA, imageB }` is the contract the UI renders. Images fall back to SVG placeholders until image generation is added.
+**Frontend (`index.html`, `script.js`, `style.css`).** One page with four `<section class="view">` elements: form, loading, result, error. `showView(name)` in `script.js` sets the `hidden` attribute so exactly one view is visible at a time, and new views (e.g. BattleDex) should follow the same pattern. Buttons are wired through delegated clicks on `data-action` attributes. `fight()` POSTs to `/api/fight` and maps the API's `error.code` (`rate_limited`, `verdict_failed`, `image_failed`, `moderation_blocked`, `invalid_input`) plus client-side `timeout`/`network` to distinct messages via `ERROR_MESSAGES`. Its result shape `{ winner: "A"|"B", reasoning, imageA, imageB }` is the contract the UI renders.
 
 **Backend (`api/`).** Vercel turns each file in `api/` into an endpoint, but skips underscore-prefixed paths, so shared modules live in `api/_lib/`. The planned single endpoint is `api/fight.js`, which does this per request: rate-limit check first (by IP), then the Claude verdict call and OpenAI image calls. Distinct error types (verdict failure, image failure, moderation block, 429) must reach the UI as different messages.
 
 **Judge prompt (`api/_lib/judge-prompt.js`).** Exports `JUDGE_SYSTEM_PROMPT`, `buildJudgeUserMessage(a, b)`, and `sanitizeFighter()`. Fighter text is untrusted and is placed inside `<fighter_a>`/`<fighter_b>` tags, with `<`/`>` stripped, as a prompt-injection defence. The judge must always pick exactly one winner and returns `winner` as the side label `"A"`/`"B"`, not the name, so mirrored matchups (cow vs cow) stay unambiguous. Enforce the verdict output with a zod schema (`winner: z.enum(["A","B"])`, `reasoning: z.string()`), not JSON-format instructions in the prompt.
 
-**Image prompts.** Every OpenAI image prompt must append the shared art-style template quoted in `project-build.md` Stage 3 (16-bit pixel art, plain solid background, no text). Group fighters ("10 cows") produce one image via the prompt, not by looping.
+**Image prompts (`api/_lib/image-prompt.js`).** Every OpenAI image prompt must append the shared art-style template quoted in `project-build.md` Stage 3 (16-bit pixel art, plain solid background, no text). Group fighters ("10 cows") produce one image via the prompt, not by looping.
 
 ## Gotchas
 
