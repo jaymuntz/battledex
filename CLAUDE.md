@@ -19,7 +19,7 @@ API keys (Anthropic, OpenAI) go in `.env` (gitignored) and are only read inside 
 
 ## Architecture
 
-**Frontend (`index.html`, `script.js`, `style.css`).** One page with four `<section class="view">` elements: form, loading, result, error. `showView(name)` in `script.js` sets the `hidden` attribute so exactly one view is visible at a time, and new views (e.g. BattleDex) should follow the same pattern. Buttons are wired through delegated clicks on `data-action` attributes. `fakeFight()` is a placeholder for the real `/api/fight` call (Stage 3). Its result shape `{ winner: "A"|"B", reasoning, imageA, imageB }` is the contract the UI renders.
+**Frontend (`index.html`, `script.js`, `style.css`).** One page with four `<section class="view">` elements: form, loading, result, error. `showView(name)` in `script.js` sets the `hidden` attribute so exactly one view is visible at a time, and new views (e.g. BattleDex) should follow the same pattern. Buttons are wired through delegated clicks on `data-action` attributes. `fight()` POSTs to `/api/fight` and maps the API's `error.code` (`rate_limited`, `verdict_failed`, `invalid_input`) plus client-side `timeout`/`network` to distinct messages via `ERROR_MESSAGES`. Its result shape `{ winner: "A"|"B", reasoning, imageA, imageB }` is the contract the UI renders. Images fall back to SVG placeholders until image generation is added.
 
 **Backend (`api/`).** Vercel turns each file in `api/` into an endpoint, but skips underscore-prefixed paths, so shared modules live in `api/_lib/`. The planned single endpoint is `api/fight.js`, which does this per request: rate-limit check first (by IP), then the Claude verdict call and OpenAI image calls. Distinct error types (verdict failure, image failure, moderation block, 429) must reach the UI as different messages.
 
@@ -29,5 +29,5 @@ API keys (Anthropic, OpenAI) go in `.env` (gitignored) and are only read inside 
 
 ## Gotchas
 
-- The `api/` modules use ESM `export`, but `package.json` has no `"type": "module"`. Add it before wiring `api/fight.js`, or Node and Vercel will warn or fail on imports.
+- The rate limiter (`api/_lib/rate-limit.js`) keeps counts in memory, so on Vercel the limit is per warm instance, not global. Move it to a shared store before relying on it in production.
 - Name length limits differ: the client caps names at 60 chars (`MAX_NAME_LENGTH` and the input `maxlength`), and the server truncates at 100 (`MAX_FIGHTER_LENGTH`). Keep the server limit at or above the client limit.

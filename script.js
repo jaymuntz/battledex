@@ -1,7 +1,8 @@
-// Battleground — Stage 1: static UI shell with mock data. No network calls yet.
+// Battleground — Stage 3: real verdict from /api/fight. Images are still
+// placeholders until image generation is added.
 
 const MAX_NAME_LENGTH = 60;
-const FAKE_DELAY_MS = 1500;
+const FIGHT_TIMEOUT_MS = 60_000;
 
 const views = {
   form: document.getElementById("view-form"),
@@ -59,25 +60,60 @@ function placeholderImage(label, color) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-// Stand-in for the real /api/fight call (Stage 3).
-// Type "error" as either fighter to preview the error view.
-function fakeFight(fighterA, fighterB) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if ([fighterA, fighterB].some((f) => f.toLowerCase() === "error")) {
-        reject(new Error("Mock failure: the judges walked out."));
-        return;
-      }
-      const winner = Math.random() < 0.5 ? "A" : "B";
-      const winnerName = winner === "A" ? fighterA : fighterB;
-      resolve({
-        winner,
-        reasoning: `Placeholder reasoning: ${winnerName} wins this mock fight. Real verdicts from the judge arrive in Stage 3.`,
-        imageA: placeholderImage(fighterA, "#3b6fd9"),
-        imageB: placeholderImage(fighterB, "#d93a2b"),
-      });
-    }, FAKE_DELAY_MS);
-  });
+// Messages for each error code the API returns, so each failure type reads
+// differently in the UI.
+const ERROR_MESSAGES = {
+  rate_limited: "Whoa, slow down! You've hit the limit of 5 fights per minute.",
+  verdict_failed: "The judges couldn't reach a verdict. Please try again.",
+  invalid_input: "Enter a fighter on both sides.",
+  timeout: "The judges took too long to decide. Please try again.",
+  network: "Couldn't reach the arena. Check your connection and try again.",
+};
+
+class FightError extends Error {
+  constructor(code, message) {
+    super(message || ERROR_MESSAGES[code] || "Something went wrong. Please try again.");
+    this.code = code;
+  }
+}
+
+// Calls the fight API. Resolves to { winner, reasoning, imageA, imageB }.
+async function fight(fighterA, fighterB) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FIGHT_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await fetch("/api/fight", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fighterA, fighterB }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    throw new FightError(err.name === "AbortError" ? "timeout" : "network");
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const code = data?.error?.code || (response.status === 429 ? "rate_limited" : "verdict_failed");
+    // Prefer the server's message for 429 since it includes the retry time.
+    throw new FightError(code, code === "rate_limited" ? data?.error?.message : undefined);
+  }
+  if (!data || (data.winner !== "A" && data.winner !== "B") || typeof data.reasoning !== "string") {
+    throw new FightError("verdict_failed");
+  }
+
+  return {
+    winner: data.winner,
+    reasoning: data.reasoning,
+    // Image generation comes later; fall back to placeholders until then.
+    imageA: data.imageA || placeholderImage(fighterA, "#3b6fd9"),
+    imageB: data.imageB || placeholderImage(fighterB, "#d93a2b"),
+  };
 }
 
 function renderResult(fighterA, fighterB, result) {
@@ -104,7 +140,7 @@ form.addEventListener("submit", async (event) => {
   showView("loading");
 
   try {
-    const result = await fakeFight(fighterA, fighterB);
+    const result = await fight(fighterA, fighterB);
     renderResult(fighterA, fighterB, result);
     showView("result");
   } catch (err) {
