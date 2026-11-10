@@ -1,4 +1,5 @@
-// Battleground — Stage 3: real verdict and fighter art from /api/fight.
+// Battleground: verdict and fighter art from /api/fight, plus the BattleDex
+// (saved fighters in localStorage).
 
 const MAX_NAME_LENGTH = 60;
 // Verdict plus two images can take a while; give it room before giving up.
@@ -9,6 +10,7 @@ const views = {
   loading: document.getElementById("view-loading"),
   result: document.getElementById("view-result"),
   error: document.getElementById("view-error"),
+  dex: document.getElementById("view-dex"),
 };
 
 const form = document.getElementById("fight-form");
@@ -24,7 +26,17 @@ const els = {
   winnerName: document.getElementById("winner-name"),
   reasoning: document.getElementById("reasoning"),
   errorMessage: document.getElementById("error-message"),
+  saveMessage: document.getElementById("save-message"),
+  saveButtons: document.querySelectorAll('[data-action="save"]'),
+  dexGrid: document.getElementById("dex-grid"),
+  dexEmpty: document.getElementById("dex-empty"),
+  clearDex: document.querySelector('[data-action="clear-dex"]'),
+  backToFight: document.getElementById("back-to-fight"),
 };
+
+// The most recent fight, kept in memory so the BattleDex can jump back to it.
+// Shape: { fighterA, fighterB, result }. Not persisted across reloads.
+let lastFight = null;
 
 // Show exactly one view; hide all others.
 function showView(name) {
@@ -118,6 +130,109 @@ function renderResult(fighterA, fighterB, result) {
   els.imageB.alt = `Art of ${fighterB}`;
   els.winnerName.textContent = result.winner === "A" ? fighterA : fighterB;
   els.reasoning.textContent = result.reasoning;
+
+  // Fresh fight: both fighters can be saved again.
+  els.saveMessage.textContent = "";
+  for (const btn of els.saveButtons) {
+    btn.disabled = false;
+    btn.textContent = "Save to BattleDex";
+  }
+}
+
+// ---------- BattleDex (localStorage) ----------
+
+const DEX_STORAGE_KEY = "battleground.battledex";
+
+// Returns the saved fighters as an array of { label, image }. Bad or missing
+// data reads as an empty BattleDex rather than breaking the page.
+function loadDex() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DEX_STORAGE_KEY));
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry) => entry && typeof entry.label === "string" && typeof entry.image === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+// Throws if the browser refuses the write (usually the storage quota).
+function writeDex(entries) {
+  localStorage.setItem(DEX_STORAGE_KEY, JSON.stringify(entries));
+}
+
+function saveFighter(side) {
+  if (!lastFight) return;
+  const label = side === "A" ? lastFight.fighterA : lastFight.fighterB;
+  const image = side === "A" ? lastFight.result.imageA : lastFight.result.imageB;
+  const button = document.querySelector(`[data-action="save"][data-side="${side}"]`);
+
+  try {
+    writeDex([...loadDex(), { label, image }]);
+  } catch (err) {
+    console.error("[battledex] save failed:", err);
+    els.saveMessage.textContent = "Couldn't save: your BattleDex is full. Delete some fighters and try again.";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Saved!";
+  els.saveMessage.textContent = `${label} added to your BattleDex.`;
+}
+
+function deleteFighter(index) {
+  const entries = loadDex();
+  entries.splice(index, 1);
+  writeDex(entries);
+  renderDex();
+}
+
+function clearDex() {
+  if (!confirm("Delete every fighter in your BattleDex?")) return;
+  localStorage.removeItem(DEX_STORAGE_KEY);
+  renderDex();
+}
+
+// Builds the card grid. Labels go in via textContent since they're user input.
+function renderDex() {
+  const entries = loadDex();
+  els.dexGrid.replaceChildren(
+    ...entries.map((entry, index) => {
+      const card = document.createElement("li");
+      card.className = "dex-card";
+
+      const img = document.createElement("img");
+      img.src = entry.image;
+      img.alt = `Art of ${entry.label}`;
+      img.loading = "lazy";
+
+      const name = document.createElement("p");
+      name.className = "dex-card-name";
+      name.textContent = entry.label;
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "dex-card-delete";
+      del.dataset.action = "delete-fighter";
+      del.dataset.index = String(index);
+      del.setAttribute("aria-label", `Delete ${entry.label}`);
+      del.textContent = "×";
+
+      card.append(img, name, del);
+      return card;
+    }),
+  );
+
+  els.dexEmpty.hidden = entries.length > 0;
+  els.dexGrid.hidden = entries.length === 0;
+  els.clearDex.hidden = entries.length === 0;
+  els.backToFight.hidden = !lastFight;
+}
+
+function openDex() {
+  renderDex();
+  showView("dex");
 }
 
 form.addEventListener("submit", async (event) => {
@@ -134,6 +249,7 @@ form.addEventListener("submit", async (event) => {
 
   try {
     const result = await fight(fighterA, fighterB);
+    lastFight = { fighterA, fighterB, result };
     renderResult(fighterA, fighterB, result);
     showView("result");
   } catch (err) {
@@ -142,11 +258,33 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-// "New fight" / "Try again" buttons return to the form, keeping the typed names.
+// All buttons are wired through their data-action attribute.
 document.addEventListener("click", (event) => {
-  if (event.target.closest('[data-action="new-fight"]')) {
-    showView("form");
-    inputA.focus();
+  const target = event.target.closest("[data-action]");
+  if (!target) return;
+
+  switch (target.dataset.action) {
+    case "new-fight":
+      // Back to the form, keeping the typed names.
+      showView("form");
+      inputA.focus();
+      break;
+    case "open-dex":
+      openDex();
+      break;
+    case "back-to-fight":
+      // The result view's DOM still holds the last fight.
+      if (lastFight) showView("result");
+      break;
+    case "save":
+      saveFighter(target.dataset.side);
+      break;
+    case "delete-fighter":
+      deleteFighter(Number(target.dataset.index));
+      break;
+    case "clear-dex":
+      clearDex();
+      break;
   }
 });
 

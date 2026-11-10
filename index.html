@@ -10,6 +10,7 @@
   <header class="site-header">
     <h1>Battleground</h1>
     <p class="tagline">Two fighters enter. One verdict leaves.</p>
+    <button type="button" class="btn btn-link" data-action="open-dex">BattleDex</button>
   </header>
 
   <main>
@@ -48,11 +49,13 @@
         <figure class="fighter" id="fighter-card-a">
           <img id="image-a" alt="">
           <figcaption id="name-a"></figcaption>
+          <button type="button" class="btn btn-secondary btn-small" data-action="save" data-side="A">Save to BattleDex</button>
         </figure>
         <div class="vs" aria-hidden="true">VS</div>
         <figure class="fighter" id="fighter-card-b">
           <img id="image-b" alt="">
           <figcaption id="name-b"></figcaption>
+          <button type="button" class="btn btn-secondary btn-small" data-action="save" data-side="B">Save to BattleDex</button>
         </figure>
       </div>
 
@@ -62,7 +65,28 @@
         <p id="reasoning"></p>
       </div>
 
-      <button type="button" class="btn btn-primary" data-action="new-fight">New fight</button>
+      <p id="save-message" class="save-message" role="status"></p>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" data-action="new-fight">New fight</button>
+        <button type="button" class="btn btn-secondary" data-action="open-dex">View BattleDex</button>
+      </div>
+    </section>
+
+    <!-- View 5: BattleDex (saved fighters, from localStorage) -->
+    <section id="view-dex" class="view" hidden>
+      <div class="dex-header">
+        <h2>BattleDex</h2>
+        <button type="button" class="btn btn-danger btn-small" data-action="clear-dex">Clear all</button>
+      </div>
+
+      <p id="dex-empty" class="dex-empty">No fighters saved yet. Win (or lose) a fight and save a fighter from the result.</p>
+      <ul id="dex-grid" class="dex-grid"></ul>
+
+      <div class="actions">
+        <button type="button" class="btn btn-secondary" data-action="back-to-fight" id="back-to-fight">Back to last fight</button>
+        <button type="button" class="btn btn-primary" data-action="new-fight">New fight</button>
+      </div>
     </section>
 
     <!-- View 4: error -->

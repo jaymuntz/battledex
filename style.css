@@ -138,6 +138,40 @@ input[aria-invalid="true"] {
   filter: brightness(1.1);
 }
 
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--error);
+  border: 1px solid currentColor;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+
+.btn-link {
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: transparent;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 /* ---------- Loading ---------- */
 
 #view-loading {
@@ -223,10 +257,28 @@ input[aria-invalid="true"] {
   margin: 0;
 }
 
-#view-result .btn,
 #view-error .btn {
   display: block;
   margin: 0 auto;
+}
+
+.fighter .btn-small {
+  margin-top: 8px;
+}
+
+.save-message {
+  margin: 0 0 16px;
+  min-height: 1.5em;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
 }
 
 /* ---------- Error ---------- */
@@ -238,6 +290,79 @@ input[aria-invalid="true"] {
 #view-error h2 {
   margin-top: 0;
   color: var(--error);
+}
+
+/* ---------- BattleDex ---------- */
+
+.dex-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dex-header h2 {
+  margin: 0;
+}
+
+.dex-empty {
+  margin: 0 0 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.dex-grid {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+/* Mini trading card: image on top, name below. Display only, not clickable. */
+.dex-card {
+  position: relative;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  text-align: center;
+}
+
+.dex-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.dex-card-name {
+  margin: 6px 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.dex-card-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dex-card-delete:hover,
+.dex-card-delete:focus-visible {
+  background: var(--error);
 }
 
 /* ---------- Wider screens ---------- */
