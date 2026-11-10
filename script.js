@@ -162,21 +162,78 @@ function writeDex(entries) {
   localStorage.setItem(DEX_STORAGE_KEY, JSON.stringify(entries));
 }
 
-function saveFighter(side) {
+// Saved images are shrunk before they go into localStorage (about 5MB per
+// origin). The API returns 1024px images; cards show at ~140-200 CSS px, so
+// 320px still looks sharp on high-DPI screens at a fraction of the size.
+const DEX_IMAGE_SIZE = 320;
+const DEX_IMAGE_QUALITY = 0.8;
+
+// Draws the image to an off-screen canvas at DEX_IMAGE_SIZE and re-exports it
+// as WebP (JPEG where the browser can't encode WebP). Resolves to a data URL.
+async function compressImage(src) {
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+
+  // Fit the longer side to DEX_IMAGE_SIZE; never upscale.
+  const scale = Math.min(1, DEX_IMAGE_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.naturalWidth * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
+
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  // toDataURL silently falls back to PNG for unsupported types (Safari < 17
+  // can't encode WebP), so check what came back.
+  let compressed = canvas.toDataURL("image/webp", DEX_IMAGE_QUALITY);
+  if (!compressed.startsWith("data:image/webp")) {
+    compressed = canvas.toDataURL("image/jpeg", DEX_IMAGE_QUALITY);
+  }
+
+  // Very flat art can already be tiny; never store a bigger copy.
+  return compressed.length < src.length ? compressed : src;
+}
+
+async function saveFighter(side) {
   if (!lastFight) return;
-  const label = side === "A" ? lastFight.fighterA : lastFight.fighterB;
-  const image = side === "A" ? lastFight.result.imageA : lastFight.result.imageB;
+  const fight = lastFight;
+  const label = side === "A" ? fight.fighterA : fight.fighterB;
+  const original = side === "A" ? fight.result.imageA : fight.result.imageB;
   const button = document.querySelector(`[data-action="save"][data-side="${side}"]`);
+
+  // Block double-clicks while compressing.
+  button.disabled = true;
+  button.textContent = "Saving…";
+
+  let image;
+  try {
+    image = await compressImage(original);
+  } catch (err) {
+    console.error("[battledex] compression failed:", err);
+    if (fight === lastFight) {
+      button.disabled = false;
+      button.textContent = "Save to BattleDex";
+      els.saveMessage.textContent = "Couldn't save that fighter's art. Please try again.";
+    }
+    return;
+  }
 
   try {
     writeDex([...loadDex(), { label, image }]);
   } catch (err) {
     console.error("[battledex] save failed:", err);
-    els.saveMessage.textContent = "Couldn't save: your BattleDex is full. Delete some fighters and try again.";
+    if (fight === lastFight) {
+      button.disabled = false;
+      button.textContent = "Save to BattleDex";
+      els.saveMessage.textContent = "Couldn't save: your BattleDex is full. Delete some fighters and try again.";
+    }
     return;
   }
 
-  button.disabled = true;
+  // A new fight may have started while compressing; don't touch its buttons.
+  if (fight !== lastFight) return;
   button.textContent = "Saved!";
   els.saveMessage.textContent = `${label} added to your BattleDex.`;
 }
