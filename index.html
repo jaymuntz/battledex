@@ -4,64 +4,122 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Battleground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@500;600;700&family=Silkscreen:wght@400;700&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="scanlines" aria-hidden="true"></div>
+
   <header class="site-header">
-    <h1>Battleground</h1>
+    <div class="site-header-bar">
+      <span class="credits" aria-hidden="true">CREDITS 05</span>
+      <button type="button" class="btn btn-cyan btn-small" data-action="open-dex">BattleDex</button>
+    </div>
+    <h1 class="logo">Battleground</h1>
     <p class="tagline">Two fighters enter. One verdict leaves.</p>
-    <button type="button" class="btn btn-link" data-action="open-dex">BattleDex</button>
   </header>
 
   <main>
     <!-- View 1: input form (only view visible on load) -->
     <section id="view-form" class="view">
+      <div class="arena-floor" aria-hidden="true"></div>
       <form id="fight-form" novalidate>
-        <div class="field">
-          <label for="fighter-a">Fighter A</label>
+        <div class="field field-a">
+          <div class="field-head">
+            <label for="fighter-a">Fighter A</label>
+            <span class="chip" aria-hidden="true">P1</span>
+          </div>
           <input id="fighter-a" name="fighterA" type="text" maxlength="60"
                  placeholder="e.g. a grizzly bear" autocomplete="off">
+          <span class="char-count" id="count-a" aria-hidden="true">0/60</span>
         </div>
 
-        <div class="vs" aria-hidden="true">VS</div>
+        <div class="vs" aria-hidden="true"><span>VS</span></div>
 
-        <div class="field">
-          <label for="fighter-b">Fighter B</label>
+        <div class="field field-b">
+          <div class="field-head">
+            <label for="fighter-b">Fighter B</label>
+            <span class="chip" aria-hidden="true">P2</span>
+          </div>
           <input id="fighter-b" name="fighterB" type="text" maxlength="60"
                  placeholder="e.g. 10 angry geese" autocomplete="off">
+          <span class="char-count" id="count-b" aria-hidden="true">0/60</span>
         </div>
 
         <p id="form-message" class="form-message" role="alert"></p>
 
-        <button type="submit" class="btn btn-primary">Fight!</button>
+        <button type="submit" class="btn btn-fight">Fight!</button>
+        <p class="press-start" aria-hidden="true">PRESS FIGHT TO START</p>
       </form>
     </section>
 
     <!-- View 2: loading -->
     <section id="view-loading" class="view" hidden>
-      <div class="spinner" aria-hidden="true"></div>
+      <p class="round-label">ROUND 1</p>
+      <p class="loading-matchup"><span id="loading-name-a"></span> <em>vs</em> <span id="loading-name-b"></span></p>
+      <div class="loading-stage" aria-hidden="true">
+        <div class="ghost ghost-a"><span>?</span></div>
+        <div class="vs"><span>VS</span></div>
+        <div class="ghost ghost-b"><span>?</span></div>
+      </div>
       <p class="loading-text" aria-live="polite">Judging the fight…</p>
+      <div class="load-bar" aria-hidden="true"><div></div></div>
+      <p class="loading-status" id="loading-status" aria-hidden="true"></p>
     </section>
 
     <!-- View 3: result -->
     <section id="view-result" class="view" hidden>
+      <div class="hud" aria-hidden="true">
+        <div class="hud-side hud-a">
+          <div class="hud-name"><span class="chip">P1</span><span id="hud-name-a"></span></div>
+          <div class="hp"><div id="hp-a"></div></div>
+        </div>
+        <div class="ko">K.O.</div>
+        <div class="hud-side hud-b">
+          <div class="hud-name"><span class="chip">P2</span><span id="hud-name-b"></span></div>
+          <div class="hp"><div id="hp-b"></div></div>
+        </div>
+      </div>
+
       <div class="matchup">
         <figure class="fighter" id="fighter-card-a">
-          <img id="image-a" alt="">
-          <figcaption id="name-a"></figcaption>
-          <button type="button" class="btn btn-secondary btn-small" data-action="save" data-side="A">Save to BattleDex</button>
+          <div class="fighter-frame">
+            <div class="winner-fx" aria-hidden="true"><div class="rays"></div></div>
+            <p class="winner-banner" aria-hidden="true">★ Winner ★</p>
+            <div class="fighter-card">
+              <div class="fighter-art">
+                <img id="image-a" alt="">
+                <span class="defeated-stamp" aria-hidden="true">Defeated</span>
+              </div>
+              <figcaption><span id="name-a"></span><span class="chip">P1</span></figcaption>
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-small" data-action="save" data-side="A">Save to BattleDex</button>
         </figure>
-        <div class="vs" aria-hidden="true">VS</div>
+        <div class="vs vs-plain" aria-hidden="true">VS</div>
         <figure class="fighter" id="fighter-card-b">
-          <img id="image-b" alt="">
-          <figcaption id="name-b"></figcaption>
-          <button type="button" class="btn btn-secondary btn-small" data-action="save" data-side="B">Save to BattleDex</button>
+          <div class="fighter-frame">
+            <div class="winner-fx" aria-hidden="true"><div class="rays"></div></div>
+            <p class="winner-banner" aria-hidden="true">★ Winner ★</p>
+            <div class="fighter-card">
+              <div class="fighter-art">
+                <img id="image-b" alt="">
+                <span class="defeated-stamp" aria-hidden="true">Defeated</span>
+              </div>
+              <figcaption><span id="name-b"></span><span class="chip">P2</span></figcaption>
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-small" data-action="save" data-side="B">Save to BattleDex</button>
         </figure>
       </div>
 
       <div class="verdict">
-        <p class="verdict-label">Winner</p>
-        <h2 id="winner-name"></h2>
+        <div class="verdict-head">
+          <p class="verdict-label">Winner</p>
+          <h2 id="winner-name"></h2>
+        </div>
         <p id="reasoning"></p>
       </div>
 
@@ -69,14 +127,17 @@
 
       <div class="actions">
         <button type="button" class="btn btn-primary" data-action="new-fight">New fight</button>
-        <button type="button" class="btn btn-secondary" data-action="open-dex">View BattleDex</button>
+        <button type="button" class="btn btn-cyan" data-action="open-dex">View BattleDex</button>
       </div>
     </section>
 
     <!-- View 5: BattleDex (saved fighters, from localStorage) -->
     <section id="view-dex" class="view" hidden>
       <div class="dex-header">
-        <h2>BattleDex</h2>
+        <div class="dex-title">
+          <h2>BattleDex</h2>
+          <span class="dex-count" id="dex-count"></span>
+        </div>
         <button type="button" class="btn btn-danger btn-small" data-action="clear-dex">Clear all</button>
       </div>
 
@@ -84,7 +145,7 @@
       <ul id="dex-grid" class="dex-grid"></ul>
 
       <div class="actions">
-        <button type="button" class="btn btn-secondary" data-action="back-to-fight" id="back-to-fight">Back to last fight</button>
+        <button type="button" class="btn btn-ghost" data-action="back-to-fight" id="back-to-fight">Back to last fight</button>
         <button type="button" class="btn btn-primary" data-action="new-fight">New fight</button>
       </div>
     </section>

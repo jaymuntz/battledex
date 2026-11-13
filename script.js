@@ -32,7 +32,53 @@ const els = {
   dexEmpty: document.getElementById("dex-empty"),
   clearDex: document.querySelector('[data-action="clear-dex"]'),
   backToFight: document.getElementById("back-to-fight"),
+  cardA: document.getElementById("fighter-card-a"),
+  cardB: document.getElementById("fighter-card-b"),
+  hudNameA: document.getElementById("hud-name-a"),
+  hudNameB: document.getElementById("hud-name-b"),
+  hpA: document.getElementById("hp-a"),
+  hpB: document.getElementById("hp-b"),
+  loadingNameA: document.getElementById("loading-name-a"),
+  loadingNameB: document.getElementById("loading-name-b"),
+  loadingStatus: document.getElementById("loading-status"),
+  countA: document.getElementById("count-a"),
+  countB: document.getElementById("count-b"),
+  dexCount: document.getElementById("dex-count"),
 };
+
+// Live character counters under each input.
+function updateCount(input, el) {
+  el.textContent = `${input.value.length}/${MAX_NAME_LENGTH}`;
+}
+inputA.addEventListener("input", () => updateCount(inputA, els.countA));
+inputB.addEventListener("input", () => updateCount(inputB, els.countB));
+
+// Flavour text that cycles under the loading bar. It doesn't track real
+// progress; it just shows the wait is alive.
+const LOADING_STATUSES = [
+  "JUDGES ARE CONFERRING…",
+  "WEIGHING STRENGTHS AND WEAKNESSES…",
+  "PAINTING THE FIGHTERS…",
+  "ALMOST READY TO CALL IT…",
+];
+let loadingTimer = null;
+
+function startLoading(fighterA, fighterB) {
+  els.loadingNameA.textContent = fighterA;
+  els.loadingNameB.textContent = fighterB;
+  let i = 0;
+  els.loadingStatus.textContent = LOADING_STATUSES[0];
+  clearInterval(loadingTimer);
+  loadingTimer = setInterval(() => {
+    i = (i + 1) % LOADING_STATUSES.length;
+    els.loadingStatus.textContent = LOADING_STATUSES[i];
+  }, 1800);
+}
+
+function stopLoading() {
+  clearInterval(loadingTimer);
+  loadingTimer = null;
+}
 
 // The most recent fight, kept in memory so the BattleDex can jump back to it.
 // Shape: { fighterA, fighterB, result }. Not persisted across reloads.
@@ -130,6 +176,25 @@ function renderResult(fighterA, fighterB, result) {
   els.imageB.alt = `Art of ${fighterB}`;
   els.winnerName.textContent = result.winner === "A" ? fighterA : fighterB;
   els.reasoning.textContent = result.reasoning;
+
+  // Winner/loser styling and the fighting-game health bars.
+  const aWins = result.winner === "A";
+  els.cardA.classList.toggle("is-winner", aWins);
+  els.cardA.classList.toggle("is-loser", !aWins);
+  els.cardB.classList.toggle("is-winner", !aWins);
+  els.cardB.classList.toggle("is-loser", aWins);
+  els.hudNameA.textContent = fighterA;
+  els.hudNameB.textContent = fighterB;
+  // Start both bars full, then drain the loser's on the next frame so the
+  // transition plays.
+  els.hpA.classList.remove("is-empty");
+  els.hpB.classList.remove("is-empty");
+  els.hpA.style.width = "";
+  els.hpB.style.width = "";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    (aWins ? els.hpB : els.hpA).classList.add("is-empty");
+    (aWins ? els.hpA : els.hpB).style.width = "64%";
+  }));
 
   // Fresh fight: both fighters can be saved again.
   els.saveMessage.textContent = "";
@@ -259,6 +324,10 @@ function renderDex() {
       const card = document.createElement("li");
       card.className = "dex-card";
 
+      const num = document.createElement("p");
+      num.className = "dex-card-num";
+      num.textContent = `#${String(index + 1).padStart(3, "0")}`;
+
       const img = document.createElement("img");
       img.src = entry.image;
       img.alt = `Art of ${entry.label}`;
@@ -276,11 +345,14 @@ function renderDex() {
       del.setAttribute("aria-label", `Delete ${entry.label}`);
       del.textContent = "×";
 
-      card.append(img, name, del);
+      card.append(num, img, name, del);
       return card;
     }),
   );
 
+  els.dexCount.textContent = entries.length
+    ? `${entries.length} FIGHTER${entries.length === 1 ? "" : "S"}`
+    : "";
   els.dexEmpty.hidden = entries.length > 0;
   els.dexGrid.hidden = entries.length === 0;
   els.clearDex.hidden = entries.length === 0;
@@ -302,6 +374,7 @@ form.addEventListener("submit", async (event) => {
   formMessage.textContent = problem;
   if (problem) return;
 
+  startLoading(fighterA, fighterB);
   showView("loading");
 
   try {
@@ -312,6 +385,8 @@ form.addEventListener("submit", async (event) => {
   } catch (err) {
     els.errorMessage.textContent = err.message || "Something went wrong. Please try again.";
     showView("error");
+  } finally {
+    stopLoading();
   }
 });
 
